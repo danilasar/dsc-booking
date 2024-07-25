@@ -1,0 +1,54 @@
+@import 'fonts.scss';
+
+html, body {
+    margin: 0;
+    padding: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: Jost
+}
+
+body {
+    background: linear-gradient(130deg, #6DC380, #0A6ECB);
+    min-height: 100vh;
+    font: 14pt 'Montserrat SemiBold';
+    header {
+        padding: 1.5em;
+        color: #fff;
+        a {
+            color: #fff;
+            text-decoration: none
+        }
+        a:hover {
+            color: #eeeeee
+        }
+    }
+    main {
+        background: #FFFFFFEE;
+    }
+    main {
+        padding: 1em;
+    }
+    footer {
+        padding: 5em;
+        color: #fff
+    }
+}
+
+header > nav ul {
+    list-style: none;
+}
+
+header, header > nav ul {
+    display: flex;
+    align-items: center;
+    gap: 1em
+}
+
+
+#svg_map {
+    max-height: calc(100vh - 160px);
+    max-width: 100vw;
+}
+

@@ -1,0 +1,10 @@
+@font-face {
+  font-family: Jost;
+  src: url(/static/fonts/Jost/Jost.ttf);
+}
+@font-face {
+  font-family: "Montserrat SemiBold";
+  src: url(/static/fonts/Montserrat/Montserrat-SemiBold.ttf);
+}
+
+/*# sourceMappingURL=fonts.css.map */

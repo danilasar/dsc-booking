@@ -1,0 +1,60 @@
+@font-face {
+  font-family: Jost;
+  src: url(/static/fonts/Jost/Jost.ttf);
+}
+@font-face {
+  font-family: "Montserrat SemiBold";
+  src: url(/static/fonts/Montserrat/Montserrat-SemiBold.ttf);
+}
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: Jost;
+}
+
+body {
+  background: linear-gradient(130deg, #6DC380, #0A6ECB);
+  min-height: 100vh;
+  font: 14pt "Montserrat SemiBold";
+}
+body header {
+  padding: 1.5em;
+  color: #fff;
+}
+body header a {
+  color: #fff;
+  text-decoration: none;
+}
+body header a:hover {
+  color: #eeeeee;
+}
+body main {
+  background: rgba(255, 255, 255, 0.9333333333);
+}
+body main {
+  padding: 1em;
+}
+body footer {
+  padding: 5em;
+  color: #fff;
+}
+
+header > nav ul {
+  list-style: none;
+}
+
+header, header > nav ul {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+}
+
+#svg_map {
+  max-height: calc(100vh - 160px);
+  max-width: 100vw;
+}
+
+/*# sourceMappingURL=style.css.map */
