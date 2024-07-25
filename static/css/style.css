@@ -24,6 +24,11 @@ body header {
   padding: 1.5em;
   color: #fff;
 }
+@media screen and (max-height: 768px) {
+  body header {
+    padding: 0.25em 1.5em;
+  }
+}
 body header a {
   color: #fff;
   text-decoration: none;
@@ -33,6 +38,7 @@ body header a:hover {
 }
 body main {
   background: rgba(255, 255, 255, 0.9333333333);
+  box-shadow: 0 0 5px #17334f;
 }
 body main {
   padding: 1em;
@@ -52,9 +58,29 @@ header, header > nav ul {
   gap: 1em;
 }
 
+#page_index {
+  display: flex;
+  justify-content: center;
+}
+
 #svg_map {
-  max-height: calc(100vh - 160px);
+  max-height: calc(100vh - 180px);
   max-width: 100vw;
+}
+#svg_map #chairs_and_pufs circle {
+  cursor: pointer;
+}
+#svg_map #chairs_and_pufs .inactive {
+  fill: #D9D9D9;
+}
+#svg_map #chairs_and_pufs circle:not(.inactive):hover {
+  filter: brightness(200%);
+}
+#svg_map #chairs_and_pufs .free {
+  fill: #3fbc71;
+}
+#svg_map #chairs_and_pufs .nonfree {
+  fill: #b10101;
 }
 
 /*# sourceMappingURL=style.css.map */
