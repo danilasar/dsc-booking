@@ -1,23 +1,21 @@
-mod templator;
 mod config;
-mod db;
-mod errors;
 mod models;
-mod services_static_pages;
-mod services_legacy;
+mod services;
+mod core;
+
 
 use std::{convert::Infallible, io};
 use std::sync::Mutex;
 
 use actix_files::{Files, NamedFile};
-use actix_session::{storage::CookieSessionStore, Session, SessionMiddleware};
+use actix_session::{Session, SessionMiddleware, storage::CookieSessionStore};
 use actix_web::{
-    error, get,
-    http::{
+    App, Either,
+    error,
+    get, http::{
         header::{self, ContentType},
         Method, StatusCode,
-    },
-    middleware, web, App, Either, HttpRequest, HttpResponse, HttpServer, Responder, Result,
+    }, HttpRequest, HttpResponse, HttpServer, middleware, Responder, Result, web,
 };
 use actix_web_lab::extract::Path;
 use async_stream::stream;
@@ -25,14 +23,17 @@ use serde_json;
 use serde_json::json;
 use std::{
     cell::Cell,
-    sync::atomic::{AtomicUsize, Ordering},
     sync::Arc,
+    sync::atomic::{AtomicUsize, Ordering},
 };
 use ::config::Config;
 use deadpool_postgres::Pool;
 use dotenv::dotenv;
 use tokio_postgres::NoTls;
 use crate::config::ServerConfig;
+
+use services::legacy;
+use services::static_pages;
 
 // NOTE: Not a suitable session key for production.
 static SESSION_SIGNING_KEY: &[u8] = &[0; 64];
@@ -122,9 +123,9 @@ async fn main() -> io::Result<()> {
             // register favicon
             .service(favicon)
             // with path parameters
-            .service(web::resource("/user/{name}").route(web::get().to(services_legacy::with_param)))
+            .service(web::resource("/user/{name}").route(web::get().to(legacy::with_param)))
             // async response body
-            .service(web::resource("/async-body/{name}").route(web::get().to(services_legacy::streaming_response)))
+            .service(web::resource("/async-body/{name}").route(web::get().to(legacy::streaming_response)))
             .service(
                 web::resource("/test").to(|req: HttpRequest| match *req.method() {
                     Method::GET => HttpResponse::Ok(),
@@ -149,9 +150,9 @@ async fn main() -> io::Result<()> {
                         .finish()
                 })),
             )*/
-            .service(services_static_pages::index)
-            .service(services_static_pages::users)
-            .service(services_static_pages::about)
+            .service(static_pages::index)
+            .service(static_pages::users)
+            .service(static_pages::about)
             // default
             .default_service(web::to(default_handler))
     })

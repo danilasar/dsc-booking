@@ -37,7 +37,7 @@ async fn welcome(req: HttpRequest, session: Session) -> actix_web::Result<HttpRe
 
     let mut engine = upon::Engine::new();
     engine
-        .add_template("welcome", include_str!("../style/welcome.html"))
+        .add_template("welcome", include_str!("../../style/welcome.html"))
         .unwrap_or_default();
     let result = engine.template("welcome")
         .render(upon::value!{ user: { name: "Ivan Afonichev" }})

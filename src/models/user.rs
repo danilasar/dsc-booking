@@ -1,11 +1,23 @@
 use deadpool_postgres::Client;
+use serde::{Deserialize, Serialize};
 use tokio_pg_mapper::FromTokioPostgresRow;
+use tokio_pg_mapper::tokio_pg_mapper_derive::PostgresMapper;
 use tokio_postgres::types::ToSql;
+use crate::core::errors::DbError;
 
-use crate::{errors::DbError, models::User};
+#[derive(Deserialize, PostgresMapper, Serialize)]
+#[pg_mapper(table = "users")] // singular 'user' is a keyword..
+pub struct User {
+    pub id: Option<i32>,
+    pub login: String,
+    pub name: String,
+    pub password_hash: String,
+    pub role: i32,
+    pub score: i32
+}
 
 pub async fn get_users(client: &Client) -> Result<Vec<User>, DbError> {
-    let stmt = include_str!("../sql/get_users.sql");
+    let stmt = include_str!("../../sql/get_users.sql");
     let stmt = stmt.replace("$table_fields", &User::sql_table_fields());
     let stmt = client.prepare(&stmt).await.unwrap();
 
@@ -20,7 +32,7 @@ pub async fn get_users(client: &Client) -> Result<Vec<User>, DbError> {
 }
 
 pub async fn add_user(client: &Client, user_info: User) -> Result<User, DbError> {
-    let _stmt = include_str!("../sql/add_user.sql");
+    let _stmt = include_str!("../../sql/add_user.sql");
     let _stmt = _stmt.replace("$table_fields", &User::sql_table_fields());
     let stmt = client.prepare(&_stmt).await.unwrap();
 

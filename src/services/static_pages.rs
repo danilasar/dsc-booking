@@ -3,8 +3,9 @@ use actix_web::{get, HttpRequest, HttpResponse, web};
 use actix_web::http::header::ContentType;
 use actix_web::http::StatusCode;
 use deadpool_postgres::Client;
-use crate::{AppState, db, models, templator};
-use crate::errors::DbError;
+use crate::{AppState, models};
+use crate::core::{db, templator};
+use crate::core::errors::DbError;
 
 #[get("/")]
 async fn index(req: HttpRequest, session: Session, app_state: web::Data<AppState<'_>>)
@@ -53,7 +54,7 @@ async fn users(req: HttpRequest, session: Session, app_state: web::Data<AppState
                           -> actix_web::Result<HttpResponse>
 {
     let client: Client = app_state.db_pool.get().await.map_err(DbError::PoolError)?;
-    let users = db::get_users(&client).await?;
+    let users = models::user::get_users(&client).await?;
     let users_html = app_state.upon_engine.template("users")
         .render(upon::value!{ users: users })
         .to_string().unwrap_or("456".to_string());
