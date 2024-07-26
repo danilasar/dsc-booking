@@ -48,18 +48,3 @@ async fn about(req: HttpRequest, session: Session, app_state: web::Data<AppState
         .content_type(ContentType::html())
         .body(wrap))
 }
-
-#[get("/users")]
-async fn users(req: HttpRequest, session: Session, app_state: web::Data<AppState<'_>>)
-                          -> actix_web::Result<HttpResponse>
-{
-    let client: Client = app_state.db_pool.get().await.map_err(DbError::PoolError)?;
-    let users = models::user::get_users(&client).await?;
-    let users_html = app_state.upon_engine.template("users")
-        .render(upon::value!{ users: users })
-        .to_string().unwrap_or("456".to_string());
-    let wrap = templator::wrap_page(req, app_state, &*users_html, "Пользователи".into());
-    Ok(HttpResponse::build(StatusCode::OK)
-        .content_type(ContentType::html())
-        .body(wrap))
-}

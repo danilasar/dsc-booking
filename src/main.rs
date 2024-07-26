@@ -34,6 +34,7 @@ use crate::config::ServerConfig;
 
 use services::legacy;
 use services::static_pages;
+use crate::services::users;
 
 // NOTE: Not a suitable session key for production.
 static SESSION_SIGNING_KEY: &[u8] = &[0; 64];
@@ -86,19 +87,19 @@ async fn main() -> io::Result<()> {
 
     let mut upon_engine = upon::Engine::new();
     upon_engine
-        .add_template("wrap", include_str!("../style/wrap.html"))
+        .add_template("wrap", include_str!("views/wrap.html"))
         .unwrap_or_default();
     upon_engine
-        .add_template("index", include_str!("../style/pages/index.html"))
+        .add_template("index", include_str!("views/pages/index.html"))
         .unwrap_or_default();
     upon_engine
-        .add_template("users", include_str!("../style/pages/users.html"))
+        .add_template("users", include_str!("views/pages/users.html"))
         .unwrap_or_default();
     upon_engine
-        .add_template("about", include_str!("../style/pages/about.html"))
+        .add_template("about", include_str!("views/pages/about.html"))
         .unwrap_or_default();
     upon_engine
-        .add_template("welcome", include_str!("../style/welcome.html"))
+        .add_template("welcome", include_str!("views/welcome.html"))
         .unwrap_or_default();
 
 
@@ -151,7 +152,7 @@ async fn main() -> io::Result<()> {
                 })),
             )*/
             .service(static_pages::index)
-            .service(static_pages::users)
+            .service(users::users)
             .service(static_pages::about)
             // default
             .default_service(web::to(default_handler))
