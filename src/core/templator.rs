@@ -1,4 +1,7 @@
+use std::collections::HashMap;
 use actix_web::HttpRequest;
+use handlebars::Handlebars;
+use serde_json::json;
 use crate::AppState;
 
 pub(crate) fn wrap_page(req: HttpRequest, app_state: actix_web::web::Data<AppState<'_>>, content: &str, title: Option<&str>) -> String {
@@ -9,8 +12,16 @@ pub(crate) fn wrap_page(req: HttpRequest, app_state: actix_web::web::Data<AppSta
     if(requested_with == "XMLHttpRequest") {
         return content.to_string();
     }
-    let wrap = app_state.upon_engine.template("wrap")
-        .render(upon::value!{ content: content, page: { name: title.unwrap_or_default() } })
-        .to_string().unwrap_or(content.to_string());
-    return wrap
+
+    /*let mut handlebars = Handlebars::new();
+    handlebars
+        .register_template_string("wrap", include_str!("../views/wrap.hbs"))
+        .unwrap();*/
+
+    let data = json!({ "content": content, "page": { "name": title.unwrap_or_default() } });
+    //data.insert("content", content);
+
+    let wrap = app_state.handlebars.render("wrap", &data).unwrap();
+
+    return wrap;
 }

@@ -6,6 +6,10 @@
   font-family: "Montserrat SemiBold";
   src: url(/static/fonts/Montserrat/Montserrat-SemiBold.ttf);
 }
+* {
+  box-sizing: border-box;
+}
+
 html, body {
   margin: 0;
   padding: 0;
@@ -36,12 +40,24 @@ body header a {
 body header a:hover {
   color: #eeeeee;
 }
-body main {
-  background: rgba(255, 255, 255, 0.9333333333);
-  box-shadow: 0 0 5px #17334f;
+body #wrap {
+  display: flex;
+  justify-content: center;
 }
 body main {
-  padding: 1em;
+  background-color: rgba(255, 255, 255, 0.13);
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 40px rgba(8, 7, 16, 0.6);
+  padding: 50px 35px;
+  color: #ffffff;
+}
+@media screen and (max-width: 768px) {
+  body main {
+    border-radius: 0;
+    width: 100%;
+  }
 }
 body footer {
   padding: 5em;
@@ -58,6 +74,10 @@ header, header > nav ul {
   gap: 1em;
 }
 
+.page {
+  max-width: 768px;
+}
+
 #page_index {
   display: flex;
   justify-content: center;
@@ -66,6 +86,8 @@ header, header > nav ul {
 #svg_map {
   max-height: calc(100vh - 180px);
   max-width: 100vw;
+  width: 100%;
+  height: calc(100vh - 180px);
 }
 #svg_map #chairs_and_pufs circle {
   cursor: pointer;
@@ -83,4 +105,75 @@ header, header > nav ul {
   fill: #b10101;
 }
 
-/*# sourceMappingURL=views.css.map */
+#page_register form, #page_login form {
+  width: 400px;
+  margin: 0 auto;
+}
+@media screen and (max-width: 768px) {
+  #page_register form, #page_login form {
+    width: 100%;
+  }
+}
+#page_register form *, #page_login form * {
+  letter-spacing: 0.5px;
+  outline: none;
+  border: none;
+}
+#page_register form h3, #page_login form h3 {
+  font-size: 32px;
+  font-weight: 500;
+  line-height: 42px;
+  text-align: center;
+}
+#page_register label, #page_login label {
+  display: block;
+  margin-top: 30px;
+  font-size: 16px;
+  font-weight: 500;
+}
+#page_register input, #page_login input {
+  display: block;
+  height: 50px;
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.07);
+  border-radius: 3px;
+  padding: 0 10px;
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 300;
+  color: #ffffff;
+}
+#page_register ::placeholder, #page_login ::placeholder {
+  color: #e5e5e5;
+}
+#page_register button, #page_login button {
+  margin-top: 50px;
+  width: 100%;
+  background-color: #ffffff;
+  color: #080710;
+  padding: 15px 0;
+  font-size: 12pt;
+  font-weight: 600;
+  border-radius: 5px;
+  cursor: pointer;
+}
+#page_register .login, #page_register .register, #page_login .login, #page_login .register {
+  display: block;
+  margin-top: 30px;
+  background: red;
+  border-radius: 3px;
+  padding: 5px 10px 10px 5px;
+  background-color: rgba(255, 255, 255, 0.27);
+  color: #eaf0fb;
+  text-align: center;
+  text-decoration: none;
+}
+#page_register .login :hover, #page_register .register :hover, #page_login .login :hover, #page_login .register :hover {
+  background-color: rgba(255, 255, 255, 0.47);
+}
+#page_register .error, #page_login .error {
+  color: #aa3333;
+  font-size: 11pt;
+}
+
+/*# sourceMappingURL=style.css.map */

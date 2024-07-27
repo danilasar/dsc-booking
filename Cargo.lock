@@ -473,12 +473,14 @@ dependencies = [
  "derive_more",
  "dotenv",
  "env_logger",
+ "handlebars",
  "log",
+ "regex",
+ "rs_sha512",
  "serde",
  "serde_json",
  "tokio-pg-mapper",
  "tokio-postgres",
- "upon",
 ]
 
 [[package]]
@@ -1026,6 +1028,21 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
+]
+
+[[package]]
+name = "handlebars"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5226a0e122dc74917f3a701484482bed3ee86d016c7356836abbaa033133a157"
+dependencies = [
+ "log",
+ "pest",
+ "pest_derive",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "walkdir",
 ]
 
 [[package]]
@@ -1652,6 +1669,54 @@ dependencies = [
 ]
 
 [[package]]
+name = "rs_hasher_ctx"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a45ae5cc6246fa2666253289d6495e1fb3d125fb83842ff56b747a3b662e28e"
+dependencies = [
+ "rs_internal_hasher",
+ "rs_internal_state",
+ "rs_n_bit_words",
+]
+
+[[package]]
+name = "rs_internal_hasher"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "19754b7c13d7fb92e995b1f6330918466e134ba7c3f55bf805c72e6a9727c426"
+dependencies = [
+ "rs_internal_state",
+ "rs_n_bit_words",
+]
+
+[[package]]
+name = "rs_internal_state"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "214a4e27fec5b651d615675874c6a829496cc2aa66e5f1b184ab05cb39fd3625"
+dependencies = [
+ "rs_n_bit_words",
+]
+
+[[package]]
+name = "rs_n_bit_words"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8bc1bbb4c2a60f76b331e6ba70b5065e210fa6e72fc966c2d488736755d89cb6"
+
+[[package]]
+name = "rs_sha512"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "78bb3ee2bcf2e0bd2ead2504c3b67d1fb34ae978a2014febc011f82fcbe58d56"
+dependencies = [
+ "rs_hasher_ctx",
+ "rs_internal_hasher",
+ "rs_internal_state",
+ "rs_n_bit_words",
+]
+
+[[package]]
 name = "rust-ini"
 version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1681,6 +1746,15 @@ name = "ryu"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3cb5ba0dc43242ce17de99c180e96db90b235b8a9fdc9543c96d2209116bd9f"
+
+[[package]]
+name = "same-file"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
+dependencies = [
+ "winapi-util",
+]
 
 [[package]]
 name = "scopeguard"
@@ -2156,12 +2230,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4c87d22b6e3f4a18d4d40ef354e97c90fcb14dd91d7dc0aa9d8a1172ebf7202"
 
 [[package]]
-name = "unicode-width"
-version = "0.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0336d538f7abc86d282a4189614dfaa90810dfc2c6f6427eaf88e16311dd225d"
-
-[[package]]
 name = "universal-hash"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2169,17 +2237,6 @@ checksum = "fc1de2c688dc15305988b563c3854064043356019f97a4b46276fe734c4f07ea"
 dependencies = [
  "crypto-common",
  "subtle",
-]
-
-[[package]]
-name = "upon"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9fe29601d1624f104fa9a35ea71a5f523dd8bd1cfc8c31f8124ad2b829f013c0"
-dependencies = [
- "serde",
- "unicode-ident",
- "unicode-width",
 ]
 
 [[package]]
@@ -2210,6 +2267,16 @@ name = "version_check"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
+
+[[package]]
+name = "walkdir"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29790946404f91d9c5d06f9874efddea1dc06c5efe94541a7d6863108e3a5e4b"
+dependencies = [
+ "same-file",
+ "winapi-util",
+]
 
 [[package]]
 name = "wasi"
@@ -2296,6 +2363,15 @@ dependencies = [
  "redox_syscall 0.4.1",
  "wasite",
  "web-sys",
+]
+
+[[package]]
+name = "winapi-util"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d4cc384e1e73b93bafa6fb4f1df8c41695c8a91cf9c4c64358067d15a7b6c6b"
+dependencies = [
+ "windows-sys 0.52.0",
 ]
 
 [[package]]

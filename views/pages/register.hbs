@@ -1,0 +1,25 @@
+<div class="page" id="page_register">
+    <form method="POST">
+        <h3>Регистрация</h3>
+        <p>Стань одним из нас :)</p>
+
+        <label for="name">Твоё имя</label>
+
+        <input type="text" placeholder="Имя и фамилия" name="name" id="name" {{#if user.name}}value="{{user.name}}"{{/if}} required />
+        {{#if auth_errors.name}}<div class="error">У тебя какое-то слишком странное имя</div>{{/if}}
+
+        <label for="login">Логин</label>
+        <input type="text" placeholder="Пригодится для входа" name="login" id="login" {{#if user.login}}value="{{user.login}}"{{/if}} required />
+        {{#if auth_errors.login}}<div class="error">Я бы придумал другой логин</div>{{/if}}
+        {{#if auth_errors.exists}}<div class="error">Прости, но такой дядя у нас уже есть)</div>{{/if}}
+
+        <label for="password">Пароль</label>
+        <input type="password" placeholder="Защитит от взлома" name="password" id="password" {{#if user.password}}value="{{user.password}}"{{/if}} required />
+        {{#if auth_errors.password}}<div class="error">Пароль должен быть не меньше 8 знаков и не содержать что-то кроме букв, цифр и знаков пунктуации</div>{{/if}}
+
+        <button>Регистрация</button>
+        <div class="social">
+            <a href="./login" class="login">Я уже смешарик</a>
+        </div>
+    </form>
+</div>

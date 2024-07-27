@@ -1,0 +1,9 @@
+<section id="page_users">
+    {{#each users }}
+    <article class="user">
+        <h1>{{ this.name }}</h1>
+        <p>Роль: {{ this.role }}</p>
+        <p>Просидел у нас: {{ this.score }}</p>
+    </article>
+    {{/each}}
+</section>

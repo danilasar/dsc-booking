@@ -7,7 +7,7 @@ function setLocation(curLoc){
 }
 
 function loadAjaxNav() {
-    let main = document.querySelector("body > main");
+    let main = document.querySelector("body > #wrap > main");
     let nav = document.getElementById("nav_main").querySelectorAll("a");
     nav.forEach((value, key, parent) => {
        value.addEventListener("click", async (event) => {

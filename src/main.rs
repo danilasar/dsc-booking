@@ -4,31 +4,21 @@ mod services;
 mod core;
 
 
-use std::{convert::Infallible, io};
-use std::sync::Mutex;
+use std::{io, sync::Arc};
 
 use actix_files::{Files, NamedFile};
-use actix_session::{Session, SessionMiddleware, storage::CookieSessionStore};
+use actix_session::{SessionMiddleware, storage::CookieSessionStore};
 use actix_web::{
     App, Either,
     error,
     get, http::{
-        header::{self, ContentType},
         Method, StatusCode,
     }, HttpRequest, HttpResponse, HttpServer, middleware, Responder, Result, web,
-};
-use actix_web_lab::extract::Path;
-use async_stream::stream;
-use serde_json;
-use serde_json::json;
-use std::{
-    cell::Cell,
-    sync::Arc,
-    sync::atomic::{AtomicUsize, Ordering},
 };
 use ::config::Config;
 use deadpool_postgres::Pool;
 use dotenv::dotenv;
+use handlebars::{DirectorySourceOptions, Handlebars};
 use tokio_postgres::NoTls;
 use crate::config::ServerConfig;
 
@@ -41,7 +31,7 @@ static SESSION_SIGNING_KEY: &[u8] = &[0; 64];
 
 #[derive(Clone)]
 struct AppState<'a> {
-    upon_engine: Arc<upon::Engine<'a>>,
+    handlebars: Arc<Handlebars<'a>>,
     db_pool: Pool
 }
 
@@ -85,26 +75,14 @@ async fn main() -> io::Result<()> {
 
     log::info!("starting HTTP server at http://localhost:8080");
 
-    let mut upon_engine = upon::Engine::new();
-    upon_engine
-        .add_template("wrap", include_str!("views/wrap.html"))
-        .unwrap_or_default();
-    upon_engine
-        .add_template("index", include_str!("views/pages/index.html"))
-        .unwrap_or_default();
-    upon_engine
-        .add_template("users", include_str!("views/pages/users.html"))
-        .unwrap_or_default();
-    upon_engine
-        .add_template("about", include_str!("views/pages/about.html"))
-        .unwrap_or_default();
-    upon_engine
-        .add_template("welcome", include_str!("views/welcome.html"))
-        .unwrap_or_default();
+    let mut handlebars = Handlebars::new();
+    handlebars
+        .register_templates_directory("views", DirectorySourceOptions::default())
+        .unwrap();
 
 
     let state = AppState {
-        upon_engine: Arc::new(upon_engine),
+        handlebars: Arc::new(handlebars),
         db_pool: pool
     };
 
@@ -147,15 +125,20 @@ async fn main() -> io::Result<()> {
                 web::resource("/").route(web::get().to(|req: HttpRequest| async move {
                     println!("{req:?}");
                     HttpResponse::Found()
-                        .insert_header((header::LOCATION, "static/welcome.html"))
+                        .insert_header((header::LOCATION, "static/welcome.hbs"))
                         .finish()
                 })),
             )*/
             .service(static_pages::index)
-            .service(users::users)
             .service(static_pages::about)
+            .service(users::users)
+            .service(users::register_get)
+            .service(users::register_post)
+            .service(users::login_get)
+            .service(users::login_post)
             // default
             .default_service(web::to(default_handler))
+            .wrap(middleware::NormalizePath::trim())
     })
         .bind(("127.0.0.1", 8080))?
         .workers(2)
