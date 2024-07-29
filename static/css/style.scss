@@ -23,12 +23,8 @@ body {
         @media screen and (max-height: 768px) {
             padding: 0.25em 1.5em;
         }
-        a {
-            color: #fff;
+        a, a:hover, a:active {
             text-decoration: none
-        }
-        a:hover {
-            color: #eeeeee
         }
     }
     #wrap {
@@ -165,5 +161,17 @@ header, header > nav ul {
     .error {
         color: #aa3333;
         font-size: 11pt;
+    }
+}
+
+a {
+    color: #fff;
+    text-decoration: underline;
+    :hover {
+        color: #eeeeee;
+        text-decoration: none;
+    }
+    :active {
+        color: #dddddd;
     }
 }

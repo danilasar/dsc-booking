@@ -1,1 +1,6 @@
-SELECT $table_fields FROM public.users WHERE login = $1;
+SELECT
+    $table_fields
+FROM
+    public.users
+WHERE
+    login = $1;

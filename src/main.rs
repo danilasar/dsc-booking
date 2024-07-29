@@ -16,6 +16,9 @@ use actix_web::{
     }, HttpRequest, HttpResponse, HttpServer, middleware, Responder, Result, web,
 };
 use ::config::Config;
+use actix_session::config::CookieContentSecurity;
+use actix_session::config::SessionLifecycle::BrowserSession;
+use actix_web::cookie::{Key, SameSite};
 use deadpool_postgres::Pool;
 use dotenv::dotenv;
 use handlebars::{DirectorySourceOptions, Handlebars};
@@ -41,6 +44,17 @@ async fn favicon() -> Result<impl Responder> {
     Ok(NamedFile::open("static/favicon.ico")?)
 }
 
+fn session_middleware() -> SessionMiddleware<CookieSessionStore> {
+    SessionMiddleware::builder(
+        CookieSessionStore::default(), Key::from(&[0; 64])
+    )
+        .cookie_secure(false) // https и http
+        //.session_lifecycle(BrowserSession::default()) // expire at end of session
+        .cookie_same_site(SameSite::Strict)
+        .cookie_content_security(CookieContentSecurity::Private) // encrypt
+        .cookie_http_only(false) // не отключать чтение скриптами
+        .build()
+}
 
 
 async fn default_handler(req_method: Method) -> Result<impl Responder> {
@@ -92,11 +106,7 @@ async fn main() -> io::Result<()> {
             // enable automatic response compression - usually register this first
             .wrap(middleware::Compress::default())
             // cookie session middleware
-            .wrap(
-                SessionMiddleware::builder(CookieSessionStore::default(), key.clone())
-                    .cookie_secure(false)
-                    .build(),
-            )
+            .wrap(session_middleware())
             // enable logger - always register Actix Web Logger middleware last
             .wrap(middleware::Logger::default())
             // register favicon

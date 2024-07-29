@@ -13,6 +13,7 @@ use serde::Deserialize;
 use crate::{AppState, models};
 use crate::core::errors::DbError;
 use crate::core::templator;
+use crate::models::user;
 use crate::models::user::{add_user, get_user_by_login, User, UserLoginForm, UserRegisterForm};
 use crate::services::users::AuthError::{BadLogin, BadName, BadPassword};
 
@@ -26,19 +27,20 @@ enum AuthError {
 }
 
 
-const regex_name: Regex = Regex::new(r"[А-Яа-я -]+").unwrap();
-const regex_login: Regex = Regex::new(r"[А-Яа-яA-Za-z0-9\-_()*&^%$#@!+=/,.{}\[\]]+").unwrap();
-
-
-fn validate_register_form(form: UserRegisterForm) -> Result<(), Vec<AuthError>> {
+async fn validate_register_form(client : &Client, form: UserRegisterForm) -> Result<(), Vec<AuthError>> {
+    let regex_name: Regex = Regex::new(r"[А-Яа-я -]+").unwrap();
+    let regex_login: Regex = Regex::new(r"[А-Яа-яA-Za-z0-9\-_()*&^%$#@!+=/,.{}\[\]]+").unwrap();
     let mut auth_errors:Vec<AuthError> = Default::default();
-    if(!regex_name.is_match(form.name.as_str())) {
+    if(form.name.len() > 128 || !regex_name.is_match(form.name.as_str())) {
         auth_errors.push(AuthError::BadName);
     }
-    if(!regex_login.is_match(form.login.as_str())) {
+    if(form.login.len() > 128 || !regex_login.is_match(form.login.as_str())) {
         auth_errors.push(AuthError::BadLogin);
     }
-    if(!regex_login.is_match(form.password.as_str()) || form.password.len() < 8) {
+    if(get_user_by_login(client, form.login.as_str()).await.is_ok()) {
+        auth_errors.push(AuthError::AlreadyExists);
+    }
+    if(form.login.len() > 256 || form.password.len() < 8 || !regex_login.is_match(form.password.as_str())) {
         auth_errors.push(AuthError::BadPassword);
     }
     if(!auth_errors.is_empty()) {
@@ -48,6 +50,8 @@ fn validate_register_form(form: UserRegisterForm) -> Result<(), Vec<AuthError>> 
 }
 
 fn validate_login_form(form: UserLoginForm) -> Result<(), Vec<AuthError>> {
+    let regex_name: Regex = Regex::new(r"[А-Яа-я -]+").unwrap();
+    let regex_login: Regex = Regex::new(r"[А-Яа-яA-Za-z0-9\-_()*&^%$#@!+=/,.{}\[\]]+").unwrap();
     let mut auth_errors:Vec<AuthError> = Default::default();
     if(!regex_login.is_match(form.login.as_str())) {
         auth_errors.push(AuthError::BadLogin);
@@ -77,7 +81,7 @@ async fn register_post(req: HttpRequest,
     -> actix_web::Result<HttpResponse>
 {
     let client = app_state.db_pool.get().await.map_err(DbError::PoolError)?;
-    let verify_result = validate_register_form(params.0.clone());
+    let verify_result = validate_register_form(&client, params.0.clone()).await;
     if(verify_result.is_err()) {
         let errors = verify_result.unwrap_err();
         let register = app_state.handlebars
@@ -85,7 +89,7 @@ async fn register_post(req: HttpRequest,
                 "auth_errors": {
                     "name": errors.contains(&AuthError::BadName),
                     "login": errors.contains(&AuthError::BadLogin),
-                    "password": errors.contains(&AuthError::BadPassword)
+                    "password": errors.contains(&AuthError::BadPassword),
                     "exists": errors.contains(&AuthError::AlreadyExists)
                 },
                 "user": params.0
@@ -170,7 +174,7 @@ async fn login_post(req: HttpRequest, session: Session,
     let mut found = true; // true потому что так надо
     let user:User;
     if(verify_result.is_ok()) {
-        match get_user_by_login(&client, params.login.as_str()) {
+        match get_user_by_login(&client, params.login.as_str()).await {
             Ok(usr) => {
                 user = usr;
                 let hash = hash_password(params.password.as_str(), params.login.as_str());
@@ -186,7 +190,7 @@ async fn login_post(req: HttpRequest, session: Session,
                 "auth_errors": {
                     "login": errors.contains(&AuthError::BadLogin),
                     "password": errors.contains(&AuthError::BadPassword),
-                    "not_found": errors.contains(found)
+                    "not_found": found
                 },
                 "user": params.0
             }))
@@ -198,8 +202,14 @@ async fn login_post(req: HttpRequest, session: Session,
             .body(wrap));
     }
 
+    let session = user::generate_session_token(client, user);
+
+    /*match session.insert("message", model.message.clone()) {
+        Ok(_) => HttpResponse::Created().body("Created."),
+        Err(_) => HttpResponse::InternalServerError().body("Error.")
+    }*/
+
     Ok(HttpResponse::Found()
-        .insert_header((header::SET_COOKIE, ))
         .insert_header((header::LOCATION, "/"))
         .finish())
 }

@@ -35,18 +35,10 @@ async fn welcome(req: HttpRequest, session: Session) -> actix_web::Result<HttpRe
     // set counter to session
     session.insert("counter", counter)?;
 
-    let mut engine = upon::Engine::new();
-    engine
-        .add_template("welcome", include_str!("../../views/welcome.hbs"))
-        .unwrap_or_default();
-    let result = engine.template("welcome")
-        .render(upon::value!{ user: { name: "Ivan Afonichev" }})
-        .to_string().unwrap_or_default();
-
     // response
     Ok(HttpResponse::build(StatusCode::OK)
         .content_type(ContentType::html())
-        .body(result))
+        .body("aboba"))
 }
 
 
