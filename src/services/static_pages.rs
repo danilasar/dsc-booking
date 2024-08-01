@@ -29,7 +29,7 @@ async fn index(req: HttpRequest, session: Session, app_state: web::Data<AppState
         .render("pages/index", &json!({  }))
         .unwrap_or_default();
 
-    let wrap = templator::wrap_page(req, app_state, &*index, "Главная".into());
+    let wrap = templator::wrap_page(&req, &app_state, &session, &client, &*index, "Главная".into()).await;
     Ok(HttpResponse::build(StatusCode::OK)
         .content_type(ContentType::html())
         .body(wrap))
@@ -40,11 +40,13 @@ async fn index(req: HttpRequest, session: Session, app_state: web::Data<AppState
 async fn about(req: HttpRequest, session: Session, app_state: web::Data<AppState<'_>>)
     -> actix_web::Result<HttpResponse>
 {
+    let client: Client = app_state.db_pool.get().await.map_err(DbError::PoolError)?;
+
     let about = app_state.handlebars
         .render("pages/about", &json!({  }))
         .unwrap_or_default();
 
-    let wrap = templator::wrap_page(req, app_state, &*about, "О доме".into());
+    let wrap = templator::wrap_page(&req, &app_state, &session, &client, &*about, "О доме".into()).await;
     Ok(HttpResponse::build(StatusCode::OK)
         .content_type(ContentType::html())
         .body(wrap))

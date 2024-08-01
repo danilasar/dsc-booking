@@ -9,8 +9,9 @@ use tokio_pg_mapper::tokio_pg_mapper_derive::PostgresMapper;
 use tokio_postgres::{Row, Statement};
 use tokio_postgres::types::ToSql;
 use crate::core::errors::DbError;
+use crate::models;
 
-#[derive(Deserialize, PostgresMapper, Serialize)]
+#[derive(Clone, Deserialize, PostgresMapper, Serialize)]
 #[pg_mapper(table = "users")] // singular 'user' is a keyword..
 pub struct User {
     pub id: Option<i32>,
@@ -112,8 +113,21 @@ pub async fn get_user_by_login(client: &Client, login:&str) -> Result<User, DbEr
 pub async fn get_user_by_token(client: &Client, token: &str) -> Result<User, DbError> {
     return get_user_by(client,
                        include_str!("sql/get_user_by_token.sql"),
-                       [&token]);
+                       [&token]).await;
 }
+
+pub async fn remove_session_by_token(client: &Client, token: &str) {
+    let stmt = include_str!("sql/remove_session_by_token.sql");
+    let stmt = client.prepare(stmt).await.unwrap();
+    client.query(&stmt, &[&token]);
+}
+
+pub async fn remove_user_sessions(client: &Client, user: User) {
+    let stmt = include_str!("sql/remove_sessions_by_user.sql");
+    let stmt = client.prepare(stmt).await.unwrap();
+    client.query(&stmt, &[&user.id]);
+}
+
 
 pub async fn generate_session_token(client: &Client,
                                     mut user: User,
@@ -150,7 +164,7 @@ pub async fn generate_session_token(client: &Client,
             .query(
                 &stmt,
                 &query_params,
-            );
+            ).await?;
     } else {
         let _stmt = include_str!("sql/add_expirable_session.sql");
         let _stmt = _stmt.replace("$table_fields", &User::sql_table_fields());
@@ -164,13 +178,16 @@ pub async fn generate_session_token(client: &Client,
             .query(
                 &stmt,
                 &query_params,
-            );
+            ).await?;
     }
-    let output = q.await?
+    let output = q
         .iter()
         .map(|row| Session::from_row_ref(row).unwrap())
         .collect::<Vec<Session>>()
         .pop();
-    output
-        .ok_or(DbError::NotFound) // more applicable for SELECTs
+    Ok(Session {
+        key: Option::from(token),
+        user_id: user.id,
+        expires: None,
+    })
 }

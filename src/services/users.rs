@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::hash::{BuildHasher, Hasher};
 use std::ops::Deref;
-use actix_session::Session;
+use actix_session::{Session, SessionGetError};
 use actix_web::{get, post, HttpRequest, HttpResponse, web};
 use actix_web::http::header::ContentType;
 use actix_web::http::{header, StatusCode};
@@ -14,8 +14,9 @@ use crate::{AppState, models};
 use crate::core::errors::DbError;
 use crate::core::templator;
 use crate::models::user;
-use crate::models::user::{add_user, get_user_by_login, User, UserLoginForm, UserRegisterForm};
+use crate::models::user::{add_user, get_user_by_login, get_user_by_token, remove_session_by_token, User, UserLoginForm, UserRegisterForm};
 use crate::services::users::AuthError::{BadLogin, BadName, BadPassword};
+
 
 #[derive(PartialEq)]
 enum AuthError {
@@ -23,7 +24,9 @@ enum AuthError {
     BadLogin,
     BadPassword,
     AlreadyExists,
-    NotFound
+    NotFound,
+    TokenNotGenerated,
+    CookieNotWrote
 }
 
 
@@ -50,7 +53,6 @@ async fn validate_register_form(client : &Client, form: UserRegisterForm) -> Res
 }
 
 fn validate_login_form(form: UserLoginForm) -> Result<(), Vec<AuthError>> {
-    let regex_name: Regex = Regex::new(r"[А-Яа-я -]+").unwrap();
     let regex_login: Regex = Regex::new(r"[А-Яа-яA-Za-z0-9\-_()*&^%$#@!+=/,.{}\[\]]+").unwrap();
     let mut auth_errors:Vec<AuthError> = Default::default();
     if(!regex_login.is_match(form.login.as_str())) {
@@ -76,7 +78,7 @@ fn hash_password(password:&str, login: &str) -> String {
 
 #[post("/register")]
 async fn register_post(req: HttpRequest,
-                       app_state: web::Data<AppState<'_>>,
+                       app_state: web::Data<AppState<'_>>, session: Session,
                        params: web::Form<UserRegisterForm>)
     -> actix_web::Result<HttpResponse>
 {
@@ -96,7 +98,7 @@ async fn register_post(req: HttpRequest,
             }))
             .unwrap_or_default();
 
-        let wrap = templator::wrap_page(req, app_state, &register, "Регистрация".into());
+        let wrap = templator::wrap_page(&req, &app_state, &session, &client, &register, "Регистрация".into()).await;
         return Ok(HttpResponse::build(StatusCode::BAD_REQUEST)
             .content_type(ContentType::html())
             .body(wrap));
@@ -126,7 +128,7 @@ async fn register_post(req: HttpRequest,
         .render(template, &json!({  }))
         .unwrap_or_default();
 
-    let wrap = templator::wrap_page(req, app_state, &register, "Регистрация".into());
+    let wrap = templator::wrap_page(&req, &app_state, &session, &client, &register, "Регистрация".into()).await;
     Ok(HttpResponse::build(status)
         .content_type(ContentType::html())
         .body(wrap))
@@ -134,30 +136,60 @@ async fn register_post(req: HttpRequest,
 
 
 #[get("/register")]
-async fn register_get(req: HttpRequest,
+async fn register_get(req: HttpRequest, session:Session,
                       app_state: web::Data<AppState<'_>>)
     -> actix_web::Result<HttpResponse>
 {
+    let client = app_state.db_pool.get().await.map_err(DbError::PoolError)?;
     let register = app_state.handlebars
         .render("pages/register", &json!({  }))
         .unwrap_or_default();
 
-    let wrap = templator::wrap_page(req, app_state, &register, "Регистрация".into());
+    let wrap = templator::wrap_page(&req, &app_state, &session, &client, &register, "Регистрация".into()).await;
     Ok(HttpResponse::build(StatusCode::OK)
         .content_type(ContentType::html())
         .body(wrap))
 }
 
-#[get("/login")]
-async fn login_get(req: HttpRequest,
-                   app_state: web::Data<AppState<'_>>)
-    -> actix_web::Result<HttpResponse>
+async fn generate_login_page(req: HttpRequest,
+                       app_state: web::Data<AppState<'_>>, session: Session, client: &Client,
+                       user: Option<User>,
+                       errors : &Vec<AuthError>)
+    -> HttpResponse
 {
+    let mut data = json!({
+                "auth_errors": {
+                    "login": errors.contains(&AuthError::BadLogin),
+                    "password": errors.contains(&AuthError::BadPassword),
+                    "not_found": errors.contains(&AuthError::NotFound),
+                    "session": errors.contains(&AuthError::TokenNotGenerated),
+                    "cookie": errors.contains(&AuthError::CookieNotWrote)
+                }
+            });
+    if(user.is_some()) {
+        data["user"] = json!(user.unwrap());
+    }
+    let login = app_state.handlebars
+        .render("pages/login", &data)
+        .unwrap_or_default();
+
+    let wrap = templator::wrap_page(&req, &app_state, &session, client, &login, "Вход".into()).await;
+    return HttpResponse::build(StatusCode::BAD_REQUEST)
+        .content_type(ContentType::html())
+        .body(wrap);
+}
+
+#[get("/login")]
+async fn login_get(req: HttpRequest, session:Session,
+                   app_state: web::Data<AppState<'_>>)
+                   -> actix_web::Result<HttpResponse>
+{
+    let client = app_state.db_pool.get().await.map_err(DbError::PoolError)?;
     let login = app_state.handlebars
         .render("pages/login", &json!({  }))
         .unwrap_or_default();
 
-    let wrap = templator::wrap_page(req, app_state, &login, "Вход".into());
+    let wrap = templator::wrap_page(&req, &app_state, &session, &client, &login, "Вход".into()).await;
     Ok(HttpResponse::build(StatusCode::OK)
         .content_type(ContentType::html())
         .body(wrap))
@@ -170,65 +202,103 @@ async fn login_post(req: HttpRequest, session: Session,
     -> actix_web::Result<HttpResponse>
 {
     let client = app_state.db_pool.get().await.map_err(DbError::PoolError)?;
-    let verify_result = validate_login_form(params.0.clone());
-    let mut found = true; // true потому что так надо
-    let user:User;
-    if(verify_result.is_ok()) {
+    let validation_result = validate_login_form(params.0.clone());
+    let mut found = false; // true потому что так надо
+    let mut user:User = User {
+        id: None,
+        login: None,
+        name: None,
+        password_hash: None,
+        role: None,
+        score: None,
+    };
+    if(validation_result.is_ok()) {
         match get_user_by_login(&client, params.login.as_str()).await {
             Ok(usr) => {
                 user = usr;
                 let hash = hash_password(params.password.as_str(), params.login.as_str());
-                found = hash == user.password_hash.unwrap();
+                found = user.password_hash.clone().unwrap().as_str().eq(&hash);
             },
             Err(..) => found = false
         }
     }
-    if(verify_result.is_err() || !found) {
-        let errors = verify_result.unwrap_err();
-        let login = app_state.handlebars
-            .render("pages/login", &json!({
-                "auth_errors": {
-                    "login": errors.contains(&AuthError::BadLogin),
-                    "password": errors.contains(&AuthError::BadPassword),
-                    "not_found": found
-                },
-                "user": params.0
-            }))
-            .unwrap_or_default();
-
-        let wrap = templator::wrap_page(req, app_state, &login, "Вход".into());
-        return Ok(HttpResponse::build(StatusCode::BAD_REQUEST)
-            .content_type(ContentType::html())
-            .body(wrap));
+    if(validation_result.is_err() || !found) {
+        let mut errors = match validation_result {
+            Ok(_) => Vec::new(),
+            Err(E) => E
+        };
+        errors.push(AuthError::NotFound);
+        return Ok(generate_login_page(req, app_state, session, &client, Option::from(user), &errors).await);
     }
 
-    let session = user::generate_session_token(client, user);
+    let session_token = user::generate_session_token(&client, user.clone(), None).await;
 
-    /*match session.insert("message", model.message.clone()) {
-        Ok(_) => HttpResponse::Created().body("Created."),
-        Err(_) => HttpResponse::InternalServerError().body("Error.")
-    }*/
+    if(session_token.is_err()) {
+        return Ok(generate_login_page(req, app_state, session, &client, Option::from(user), &vec! [AuthError::TokenNotGenerated]).await);
+    }
 
-    Ok(HttpResponse::Found()
-        .insert_header((header::LOCATION, "/"))
-        .finish())
+    let session_token = session_token.unwrap();
+
+    match session.insert("token", session_token.key.clone().unwrap()) {
+        Ok(_) => Ok(HttpResponse::Found()
+            .insert_header((header::LOCATION, "/"))
+            .finish()),
+        Err(_) => Ok(generate_login_page(req, app_state, session, &client, Option::from(user), &vec! [AuthError::CookieNotWrote]).await)
+    }
 }
 
+enum GetCurrentUserError {
+    SessionGet(SessionGetError), Db(DbError), SessionIsNotString
+}
 
+pub async fn get_current_user(client: &Client,
+                              session: Session)
+    -> Result<User, GetCurrentUserError>
+{
+    let token : String = match session.get("token") {
+        Ok(token_option) => match token_option {
+            Some(val) =>  val,
+            None => return Err(GetCurrentUserError::SessionIsNotString)
+        },
+        Err(error) => return Err(GetCurrentUserError::SessionGet(error))
+    };
+
+    match get_user_by_token(&client, token.as_str()).await {
+        Ok(user) => Ok(user),
+        Err(error) => Err(GetCurrentUserError::Db(error))
+    }
+}
+
+pub async fn is_authored(client: &Client, session: Session) -> bool {
+    return get_current_user(&client, session).await.is_ok();
+}
+
+#[get("/logout")]
+async fn logout(req: HttpRequest, app_state: web::Data<AppState<'_>>, session: Session) -> actix_web::Result<HttpResponse> {
+    let client: Client = app_state.db_pool.get().await.map_err(DbError::PoolError)?;
+    match session.remove("token") {
+        Some(token) => {
+            remove_session_by_token(&client, token.as_str());
+            Ok(HttpResponse::Found()
+                .insert_header((header::LOCATION, "/"))
+                .finish())
+        },
+        None => Ok(HttpResponse::build(StatusCode::OK)
+            .content_type(ContentType::html())
+            .body("Сударь, вы попутали берега"))
+    }
+}
 
 #[get("/users")]
-async fn users(req: HttpRequest, app_state: web::Data<AppState<'_>>)
+async fn users(req: HttpRequest, app_state: web::Data<AppState<'_>>, session:Session)
                -> actix_web::Result<HttpResponse>
 {
     let client: Client = app_state.db_pool.get().await.map_err(DbError::PoolError)?;
     let users = models::user::get_users(&client).await?;
     let users_html = app_state.handlebars
-        .render("pages/users", &json!({ "users": [ match models::user::get_user_by_id(&client, 2).await {
-            Ok(T)   => T,
-            Err(..) => models::user::get_user_by_id(&client, 1).await?
-        } ] }))
+        .render("pages/users", &json!({ "users": users }))
         .unwrap_or_default();
-    let wrap = templator::wrap_page(req, app_state, &*users_html, "Пользователи".into());
+    let wrap = templator::wrap_page(&req, &app_state, &session, &client, &*users_html, "Пользователи".into()).await;
     Ok(HttpResponse::build(StatusCode::OK)
         .content_type(ContentType::html())
         .body(wrap))

@@ -1,8 +1,10 @@
 SELECT
     $table_fields
 FROM
-    public.users AS usrs
-RIGHT JOIN
     public.sessions AS sess
+LEFT JOIN
+    public.users AS users
+ON
+    sess.user_id = users.id
 WHERE
-    sess.user_id = usrs.id AND sess."key" = $1;
+    sess.user_id = users.id  AND sess."key" = $1;

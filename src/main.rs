@@ -146,6 +146,7 @@ async fn main() -> io::Result<()> {
             .service(users::register_post)
             .service(users::login_get)
             .service(users::login_post)
+            .service(users::logout)
             // default
             .default_service(web::to(default_handler))
             .wrap(middleware::NormalizePath::trim())
