@@ -11,10 +11,10 @@ use regex::Regex;
 use rs_sha512::{HasherContext, Sha512State};
 use serde::Deserialize;
 use crate::{AppState, models};
-use crate::core::errors::DbError;
-use crate::core::templator;
+use crate::core::{ServiceData, templator, errors::DbError};
 use crate::models::user;
-use crate::models::user::{add_user, get_user_by_login, get_user_by_token, remove_session_by_token, User, UserLoginForm, UserRegisterForm};
+use crate::models::user::{add_user, get_user_by_login, get_user_by_token, remove_session_by_token,
+                          User, UserLoginForm, UserRegisterForm};
 use crate::services::users::AuthError::{BadLogin, BadName, BadPassword};
 
 
@@ -30,7 +30,10 @@ enum AuthError {
 }
 
 
-async fn validate_register_form(client : &Client, form: UserRegisterForm) -> Result<(), Vec<AuthError>> {
+async fn validate_register_form(service_data: &ServiceData<'_>,
+                                form: UserRegisterForm)
+    -> Result<(), Vec<AuthError>>
+{
     let regex_name: Regex = Regex::new(r"[А-Яа-я -]+").unwrap();
     let regex_login: Regex = Regex::new(r"[А-Яа-яA-Za-z0-9\-_()*&^%$#@!+=/,.{}\[\]]+").unwrap();
     let mut auth_errors:Vec<AuthError> = Default::default();
@@ -40,10 +43,12 @@ async fn validate_register_form(client : &Client, form: UserRegisterForm) -> Res
     if(form.login.len() > 128 || !regex_login.is_match(form.login.as_str())) {
         auth_errors.push(AuthError::BadLogin);
     }
-    if(get_user_by_login(client, form.login.as_str()).await.is_ok()) {
+    if(get_user_by_login(&service_data.client, form.login.as_str()).await.is_ok()) {
         auth_errors.push(AuthError::AlreadyExists);
     }
-    if(form.login.len() > 256 || form.password.len() < 8 || !regex_login.is_match(form.password.as_str())) {
+    if(form.login.len() > 256|| form.password.len() < 8 ||
+        !regex_login.is_match(form.password.as_str()))
+    {
         auth_errors.push(AuthError::BadPassword);
     }
     if(!auth_errors.is_empty()) {
@@ -67,26 +72,18 @@ fn validate_login_form(form: UserLoginForm) -> Result<(), Vec<AuthError>> {
     Ok(())
 }
 
-fn hash_password(password:&str, login: &str) -> String {
-    let mut sha512hasher = Sha512State::default().build_hasher();
-    sha512hasher.write(password.as_bytes());
-    sha512hasher.write(format!("СВО{}aboba_AntiHohol",
-                               login.clone()).as_bytes());
-    let bytes_result = HasherContext::finish(&mut sha512hasher);
-    return format!("{bytes_result:02x}");
-}
-
 #[post("/register")]
 async fn register_post(req: HttpRequest,
                        app_state: web::Data<AppState<'_>>, session: Session,
                        params: web::Form<UserRegisterForm>)
     -> actix_web::Result<HttpResponse>
 {
-    let client = app_state.db_pool.get().await.map_err(DbError::PoolError)?;
-    let verify_result = validate_register_form(&client, params.0.clone()).await;
+    let service_data = crate::core::ServiceData::new(req, app_state, session).await?;
+    let verify_result = validate_register_form(&service_data,
+                                               params.0.clone()).await;
     if(verify_result.is_err()) {
         let errors = verify_result.unwrap_err();
-        let register = app_state.handlebars
+        let register = service_data.app_state.handlebars
             .render("pages/register", &json!({
                 "auth_errors": {
                     "name": errors.contains(&AuthError::BadName),
@@ -98,7 +95,7 @@ async fn register_post(req: HttpRequest,
             }))
             .unwrap_or_default();
 
-        let wrap = templator::wrap_page(&req, &app_state, &session, &client, &register, "Регистрация".into()).await;
+        let wrap = templator::wrap_page(&service_data, &register, "Регистрация".into()).await;
         return Ok(HttpResponse::build(StatusCode::BAD_REQUEST)
             .content_type(ContentType::html())
             .body(wrap));
@@ -108,13 +105,13 @@ async fn register_post(req: HttpRequest,
         id: None, role: None, score: None,
         name: Option::from(params.name.clone()),
         login: Option::from(params.login.clone()),
-        password_hash: Option::from(hash_password(params.password.as_str(),
+        password_hash: Option::from(crate::core::users::hash_password(params.password.as_str(),
                                                   params.login.as_str()))
     };
     //let client:Client = client.await.map_err(DbError::PoolError)?;
     let template:&str;
     let status:StatusCode;
-    match add_user(&client, user_data).await {
+    match add_user(&service_data.client, user_data).await {
         Ok(..) => {
             template = "pages/register_success";
             status = StatusCode::OK
@@ -124,11 +121,11 @@ async fn register_post(req: HttpRequest,
             status = StatusCode::INTERNAL_SERVER_ERROR
         }
     }
-    let register = app_state.handlebars
+    let register = service_data.app_state.handlebars
         .render(template, &json!({  }))
         .unwrap_or_default();
 
-    let wrap = templator::wrap_page(&req, &app_state, &session, &client, &register, "Регистрация".into()).await;
+    let wrap = templator::wrap_page(&service_data, &register, "Регистрация".into()).await;
     Ok(HttpResponse::build(status)
         .content_type(ContentType::html())
         .body(wrap))
@@ -140,19 +137,18 @@ async fn register_get(req: HttpRequest, session:Session,
                       app_state: web::Data<AppState<'_>>)
     -> actix_web::Result<HttpResponse>
 {
-    let client = app_state.db_pool.get().await.map_err(DbError::PoolError)?;
-    let register = app_state.handlebars
+    let service_data = crate::core::ServiceData::new(req, app_state, session).await?;
+    let register = service_data.app_state.handlebars
         .render("pages/register", &json!({  }))
         .unwrap_or_default();
 
-    let wrap = templator::wrap_page(&req, &app_state, &session, &client, &register, "Регистрация".into()).await;
+    let wrap = templator::wrap_page(&service_data, &register, "Регистрация".into()).await;
     Ok(HttpResponse::build(StatusCode::OK)
         .content_type(ContentType::html())
         .body(wrap))
 }
 
-async fn generate_login_page(req: HttpRequest,
-                       app_state: web::Data<AppState<'_>>, session: Session, client: &Client,
+async fn generate_login_page(service_data: &ServiceData<'_>,
                        user: Option<User>,
                        errors : &Vec<AuthError>)
     -> HttpResponse
@@ -169,11 +165,11 @@ async fn generate_login_page(req: HttpRequest,
     if(user.is_some()) {
         data["user"] = json!(user.unwrap());
     }
-    let login = app_state.handlebars
+    let login = service_data.app_state.handlebars
         .render("pages/login", &data)
         .unwrap_or_default();
 
-    let wrap = templator::wrap_page(&req, &app_state, &session, client, &login, "Вход".into()).await;
+    let wrap = templator::wrap_page(&service_data, &login, "Вход".into()).await;
     return HttpResponse::build(StatusCode::BAD_REQUEST)
         .content_type(ContentType::html())
         .body(wrap);
@@ -184,12 +180,12 @@ async fn login_get(req: HttpRequest, session:Session,
                    app_state: web::Data<AppState<'_>>)
                    -> actix_web::Result<HttpResponse>
 {
-    let client = app_state.db_pool.get().await.map_err(DbError::PoolError)?;
-    let login = app_state.handlebars
+    let service_data = crate::core::ServiceData::new(req, app_state, session).await?;
+    let login = service_data.app_state.handlebars
         .render("pages/login", &json!({  }))
         .unwrap_or_default();
 
-    let wrap = templator::wrap_page(&req, &app_state, &session, &client, &login, "Вход".into()).await;
+    let wrap = templator::wrap_page(&service_data, &login, "Вход".into()).await;
     Ok(HttpResponse::build(StatusCode::OK)
         .content_type(ContentType::html())
         .body(wrap))
@@ -201,7 +197,7 @@ async fn login_post(req: HttpRequest, session: Session,
                     params: web::Form<UserLoginForm>)
     -> actix_web::Result<HttpResponse>
 {
-    let client = app_state.db_pool.get().await.map_err(DbError::PoolError)?;
+    let service_data = ServiceData::new(req, app_state, session).await?;
     let validation_result = validate_login_form(params.0.clone());
     let mut found = false; // true потому что так надо
     let mut user:User = User {
@@ -213,10 +209,10 @@ async fn login_post(req: HttpRequest, session: Session,
         score: None,
     };
     if(validation_result.is_ok()) {
-        match get_user_by_login(&client, params.login.as_str()).await {
+        match get_user_by_login(&service_data.client, params.login.as_str()).await {
             Ok(usr) => {
                 user = usr;
-                let hash = hash_password(params.password.as_str(), params.login.as_str());
+                let hash = crate::core::users::hash_password(params.password.as_str(), params.login.as_str());
                 found = user.password_hash.clone().unwrap().as_str().eq(&hash);
             },
             Err(..) => found = false
@@ -228,62 +224,45 @@ async fn login_post(req: HttpRequest, session: Session,
             Err(E) => E
         };
         errors.push(AuthError::NotFound);
-        return Ok(generate_login_page(req, app_state, session, &client, Option::from(user), &errors).await);
+        return Ok(generate_login_page(&service_data, Option::from(user), &errors).await);
     }
 
-    let session_token = user::generate_session_token(&client, user.clone(), None).await;
+    let session_token = user::generate_session_token(&service_data.client,
+                                                     user.clone(), None).await;
 
     if(session_token.is_err()) {
-        return Ok(generate_login_page(req, app_state, session, &client, Option::from(user), &vec! [AuthError::TokenNotGenerated]).await);
+        return Ok(generate_login_page(&service_data,
+                                      Option::from(user),
+                                      &vec! [AuthError::TokenNotGenerated]).await);
     }
 
     let session_token = session_token.unwrap();
 
-    match session.insert("token", session_token.key.clone().unwrap()) {
+    match service_data.session.insert("token", session_token.key.clone().unwrap()) {
         Ok(_) => Ok(HttpResponse::Found()
             .insert_header((header::LOCATION, "/"))
             .finish()),
-        Err(_) => Ok(generate_login_page(req, app_state, session, &client, Option::from(user), &vec! [AuthError::CookieNotWrote]).await)
+        Err(_) => Ok(generate_login_page(&service_data,
+                                         Option::from(user),
+                                         &vec! [AuthError::CookieNotWrote]).await)
     }
-}
-
-enum GetCurrentUserError {
-    SessionGet(SessionGetError), Db(DbError), SessionIsNotString
-}
-
-pub async fn get_current_user(client: &Client,
-                              session: Session)
-    -> Result<User, GetCurrentUserError>
-{
-    let token : String = match session.get("token") {
-        Ok(token_option) => match token_option {
-            Some(val) =>  val,
-            None => return Err(GetCurrentUserError::SessionIsNotString)
-        },
-        Err(error) => return Err(GetCurrentUserError::SessionGet(error))
-    };
-
-    match get_user_by_token(&client, token.as_str()).await {
-        Ok(user) => Ok(user),
-        Err(error) => Err(GetCurrentUserError::Db(error))
-    }
-}
-
-pub async fn is_authored(client: &Client, session: Session) -> bool {
-    return get_current_user(&client, session).await.is_ok();
 }
 
 #[get("/logout")]
-async fn logout(req: HttpRequest, app_state: web::Data<AppState<'_>>, session: Session) -> actix_web::Result<HttpResponse> {
-    let client: Client = app_state.db_pool.get().await.map_err(DbError::PoolError)?;
-    match session.remove("token") {
+async fn logout(req: HttpRequest,
+                app_state: web::Data<AppState<'_>>,
+                session: Session)
+    -> actix_web::Result<HttpResponse>
+{
+    let service_data = ServiceData::new(req, app_state, session).await?;
+    match service_data.session.remove("token") {
         Some(token) => {
-            remove_session_by_token(&client, token.as_str());
+            remove_session_by_token(&service_data.client, token.as_str());
             Ok(HttpResponse::Found()
                 .insert_header((header::LOCATION, "/"))
                 .finish())
         },
-        None => Ok(HttpResponse::build(StatusCode::OK)
+        None => Ok(HttpResponse::build(StatusCode::UNAUTHORIZED)
             .content_type(ContentType::html())
             .body("Сударь, вы попутали берега"))
     }
@@ -293,12 +272,12 @@ async fn logout(req: HttpRequest, app_state: web::Data<AppState<'_>>, session: S
 async fn users(req: HttpRequest, app_state: web::Data<AppState<'_>>, session:Session)
                -> actix_web::Result<HttpResponse>
 {
-    let client: Client = app_state.db_pool.get().await.map_err(DbError::PoolError)?;
-    let users = models::user::get_users(&client).await?;
-    let users_html = app_state.handlebars
+    let service_data = ServiceData::new(req, app_state, session).await?;
+    let users = user::get_users(&service_data.client).await?;
+    let users_html = service_data.app_state.handlebars
         .render("pages/users", &json!({ "users": users }))
         .unwrap_or_default();
-    let wrap = templator::wrap_page(&req, &app_state, &session, &client, &*users_html, "Пользователи".into()).await;
+    let wrap = templator::wrap_page(&service_data, &*users_html, "Пользователи".into()).await;
     Ok(HttpResponse::build(StatusCode::OK)
         .content_type(ContentType::html())
         .body(wrap))

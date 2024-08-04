@@ -25,10 +25,6 @@ use handlebars::{DirectorySourceOptions, Handlebars};
 use tokio_postgres::NoTls;
 use crate::config::ServerConfig;
 
-use services::legacy;
-use services::static_pages;
-use crate::services::users;
-
 // NOTE: Not a suitable session key for production.
 static SESSION_SIGNING_KEY: &[u8] = &[0; 64];
 
@@ -112,9 +108,9 @@ async fn main() -> io::Result<()> {
             // register favicon
             .service(favicon)
             // with path parameters
-            .service(web::resource("/user/{name}").route(web::get().to(legacy::with_param)))
+            .service(web::resource("/user/{name}").route(web::get().to(services::legacy::with_param)))
             // async response body
-            .service(web::resource("/async-body/{name}").route(web::get().to(legacy::streaming_response)))
+            .service(web::resource("/async-body/{name}").route(web::get().to(services::legacy::streaming_response)))
             .service(
                 web::resource("/test").to(|req: HttpRequest| match *req.method() {
                     Method::GET => HttpResponse::Ok(),
@@ -139,14 +135,14 @@ async fn main() -> io::Result<()> {
                         .finish()
                 })),
             )*/
-            .service(static_pages::index)
-            .service(static_pages::about)
-            .service(users::users)
-            .service(users::register_get)
-            .service(users::register_post)
-            .service(users::login_get)
-            .service(users::login_post)
-            .service(users::logout)
+            .service(services::index::index)
+            .service(services::static_pages::about)
+            .service(services::users::users)
+            .service(services::users::register_get)
+            .service(services::users::register_post)
+            .service(services::users::login_get)
+            .service(services::users::login_post)
+            .service(services::users::logout)
             // default
             .default_service(web::to(default_handler))
             .wrap(middleware::NormalizePath::trim())

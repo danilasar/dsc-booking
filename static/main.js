@@ -5,10 +5,9 @@ function setLocation(curLoc){
     } catch(e) {}
     location.hash = '#' + curLoc;
 }
-
 function loadAjaxNav() {
-    let main = document.querySelector("body > #wrap > main");
-    let nav = document.getElementById("nav_main").querySelectorAll("a");
+    let default_main = document.querySelector("body > #wrap > main");
+    let nav = document.querySelectorAll("a[data-ajax]");
     nav.forEach((value, key, parent) => {
        value.addEventListener("click", async (event) => {
            event.preventDefault();
@@ -18,7 +17,12 @@ function loadAjaxNav() {
                }
            });
            let txt = await resp.text();
-           main.innerHTML = txt;
+           let customSelector = value.attributes["data-ajax"];
+           if(typeof customSelector === "string" && customSelector !== "") {
+               document.querySelector(customSelector).innerHTML = txt;
+           } else {
+               default_main.innerHTML = txt;
+           }
            setLocation(value.href);
         })
     });
