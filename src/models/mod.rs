@@ -4,7 +4,9 @@ use tokio_postgres::types::ToSql;
 use crate::models::user::User;
 
 pub(crate) mod user;
-mod roles;
+pub(crate) mod roles;
+pub(crate) mod seat;
+pub(crate) mod session;
 /*pub async fn select_sql<T>(client: &Client, sql: &str) {
     let mut stmt = String::from(sql);
     stmt = stmt.replace("$table_fields", &T::sql_table_fields());

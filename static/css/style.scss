@@ -175,3 +175,12 @@ a {
         color: #dddddd;
     }
 }
+
+.upal {
+    border-radius: 10px;
+}
+
+main:has(.upal) {
+    padding: 0;
+    border: 0
+}

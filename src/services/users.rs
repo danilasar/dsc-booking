@@ -13,8 +13,9 @@ use serde::Deserialize;
 use crate::{AppState, models};
 use crate::core::{ServiceData, templator, errors::DbError};
 use crate::models::user;
-use crate::models::user::{add_user, get_user_by_login, get_user_by_token, remove_session_by_token,
+use crate::models::user::{add_user, get_user_by_login, get_user_by_token,
                           User, UserLoginForm, UserRegisterForm};
+use crate::models::session::remove_session_by_token;
 use crate::services::users::AuthError::{BadLogin, BadName, BadPassword};
 
 
@@ -227,7 +228,7 @@ async fn login_post(req: HttpRequest, session: Session,
         return Ok(generate_login_page(&service_data, Option::from(user), &errors).await);
     }
 
-    let session_token = user::generate_session_token(&service_data.client,
+    let session_token = models::session::generate_session_token(&service_data.client,
                                                      user.clone(), None).await;
 
     if(session_token.is_err()) {

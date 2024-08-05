@@ -7,20 +7,32 @@
             <!--<rect width="5754" height="6050" fill="white" id="rect1" />-->
             <g id="chairs_and_pufs">
                 <g id="chairs">
-                    <circle cx="5026" cy="682" r="311" class="circle" fill="#D9D9D9" id="chair_uno_negr" />
-                    <circle cx="5049" cy="5110" r="311" id="chair_dos_gus" />
-                    <circle cx="3617" cy="5503" r="311" class="inactive" id="chair_tres_palm" />
-                    <circle cx="2123" cy="3538" r="311" id="chair_cuatro_dancepol" />
-                    <circle cx="946" cy="3538" r="311" id="chair_cuatro_meat" />
-                    <circle cx="946" cy="2170" r="311" id="chair_cinco_tsement" />
-                    <circle cx="2123" cy="2208" r="311" id="chair_cinco_tetris" />
-                    <circle cx="1257" cy="566" r="311" id="chair_sies_fuhrer" />
-                    <circle cx="3657" cy="700" r="311" class="nonfree" id="chair_siete_titanic" />
+                    {{#each seats.chairs}}
+                        <circle
+                            cx="{{this.default_x}}"
+                            cy="{{this.default_y}}"
+                            r="311"
+                            class="{{this.availability}}"
+                            fill="#D9D9D9" />
+                    {{/each}}
+                    {{#each seats.computer_chairs}}
+                        <circle
+                                cx="{{this.default_x}}"
+                                cy="{{this.default_y}}"
+                                r="311"
+                                class="{{this.availability}}"
+                                fill="#D9D9D9" />
+                    {{/each}}
                 </g>
                 <g id="pufs">
-                    <circle cx="5205" cy="2535" r="311" class="free" id="puf_alpha" />
-                    <circle cx="5292" cy="3084" r="311" id="puf_beta" />
-                    <circle cx="4894" cy="2143" r="311" id="puf_gamma" />
+                    {{#each seats.poufs}}
+                        <circle
+                                cx="{{this.default_x}}"
+                                cy="{{this.default_y}}"
+                                r="311"
+                                class="{{this.availability}}"
+                                fill="#D9D9D9" />
+                    {{/each}}
                 </g>
             </g>
             <rect x="1665.5" y="5726.5" width="938.855" height="311" fill="#626262" stroke="white" stroke-width="25" id="rect12" />
@@ -32,13 +44,14 @@
             <path d="M5017.93 3729.74C5020.1 3688.45 5067.14 3660 5103.48 3652.59C5146.73 3643.78 5201.59 3642.09 5244.98 3650.76C5266.98 3655.16 5286.81 3662.98 5302.56 3678.73C5306.76 3682.93 5344.25 3704.17 5339.67 3709.26C5329.58 3720.48 5281.11 3715.18 5268.38 3711.64C5250.66 3706.72 5278.83 3706.7 5283.73 3706.7C5300.29 3706.7 5329.94 3713.02 5344.97 3706.34C5352.34 3703.06 5346.98 3656.75 5346.98 3647.47" stroke="white" stroke-width="10" stroke-linecap="round" id="path23" />
             <rect x="5704" y="1817" width="101" height="2058" fill="#D9D9D9" id="rect23" />
             <g id="g24" inkscape:label="desks">
-                <rect x="2655.5" y="1387.5" width="1375" height="765" transform="rotate(-90,2655.5,1387.5)" fill="#D9D9D9" stroke="white" stroke-width="25" id="rect19" inkscape:label="siete" />
-                <rect x="569.5" y="799.5" width="1375" height="765" fill="#D9D9D9" stroke="white" stroke-width="25" id="rect20" inkscape:label="sies" />
-                <rect x="1179.5" y="2891.5" width="1375" height="765" transform="rotate(-90,1179.5,2891.5)" fill="#D9D9D9" stroke="white" stroke-width="25" id="rect16" inkscape:label="cinco" />
-                <rect x="1179.5" y="4225.5" width="1375" height="765" transform="rotate(-90,1179.5,4225.5)" fill="#D9D9D9" stroke="white" stroke-width="25" id="rect14" inkscape:label="cuatro" />
-                <rect x="3394.5" y="4662.5" width="1375" height="765" transform="rotate(90,3394.5,4662.5)" fill="#D9D9D9" stroke="white" stroke-width="25" id="rect18" inkscape:label="tres" />
-                <rect x="5741.5" y="4786.5" width="1375" height="765" transform="rotate(180,5741.5,4786.5)" fill="#D9D9D9" stroke="white" stroke-width="25" id="rect17" inkscape:label="dos" />
-                <rect x="5736.5" y="1740.5" width="1375" height="765" transform="rotate(180,5736.5,1740.5)" fill="#D9D9D9" stroke="white" stroke-width="25" id="rect15" inkscape:label="uno" />
+                {{#each seats.desks}}
+                    <rect
+                            x="{{this.default_x}}"
+                            y="{{this.default_y}}"
+                            width="1375" height="765"
+                            transform="rotate({{this.default_rot}},{{this.default_x}},{{this.default_y}})"
+                            fill="#D9D9D9" stroke="white" stroke-width="25" inkscape:label="{{this.name}}" />
+                {{/each}}
             </g>
             <g id="g25" inkscape:label="desk-texts">
                 <text xml:space="preserve" style="font-size:368.358px;text-align:center;text-anchor:middle;fill:#000000;stroke-width:30.6965" x="-698.34241" y="3168.0303" id="text24-6-5-0-3" transform="rotate(-90)" inkscape:label="siete-text"><tspan sodipodi:role="line" id="tspan24-7-3-9-6" x="-698.34241" y="3168.0303" style="text-align:center;text-anchor:middle;stroke-width:30.6965">siete</tspan></text>

@@ -184,4 +184,13 @@ a :active {
   color: #dddddd;
 }
 
+.upal {
+  border-radius: 10px;
+}
+
+main:has(.upal) {
+  padding: 0;
+  border: 0;
+}
+
 /*# sourceMappingURL=style.css.map */

@@ -135,7 +135,7 @@ async fn main() -> io::Result<()> {
                         .finish()
                 })),
             )*/
-            .service(services::index::index)
+            .service(services::booking::index)
             .service(services::static_pages::about)
             .service(services::users::users)
             .service(services::users::register_get)
