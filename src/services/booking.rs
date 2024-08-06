@@ -3,6 +3,7 @@ use actix_web::{get, HttpRequest, HttpResponse, web};
 use actix_web::http::header::ContentType;
 use actix_web::http::StatusCode;
 use deadpool_postgres::Status;
+use serde::Deserialize;
 use serde_json::json;
 use crate::{AppState, models};
 use crate::core::templator;
@@ -49,4 +50,21 @@ async fn index(req: HttpRequest, session: Session, app_state: web::Data<AppState
     Ok(HttpResponse::build(status)
         .content_type(ContentType::html())
         .body(wrap))
+}
+
+#[derive(Deserialize)]
+struct SeatPagePath {
+    id:i32
+}
+
+#[get("/seat/{id}")]
+async fn seat_page(req: HttpRequest,
+                    session: Session,
+                    path: web::Path<SeatPagePath>,
+                    app_state: web::Data<AppState<'_>>)
+    -> actix_web::Result<HttpResponse>
+{
+    Ok(HttpResponse::build(StatusCode::OK)
+        .content_type(ContentType::html())
+        .body(path.id.to_string()))
 }

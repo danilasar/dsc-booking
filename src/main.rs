@@ -136,6 +136,7 @@ async fn main() -> io::Result<()> {
                 })),
             )*/
             .service(services::booking::index)
+            .service(services::booking::seat_page)
             .service(services::static_pages::about)
             .service(services::users::users)
             .service(services::users::register_get)
@@ -148,6 +149,7 @@ async fn main() -> io::Result<()> {
             .wrap(middleware::NormalizePath::trim())
     })
         .bind(("127.0.0.1", 8080))?
+        .bind(("192.168.0.101", 8080))?
         .workers(2)
         .run()
         .await
